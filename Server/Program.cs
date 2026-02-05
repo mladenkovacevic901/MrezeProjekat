@@ -1,4 +1,6 @@
-﻿using Common;
+﻿//geng shit?
+
+using Common;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
