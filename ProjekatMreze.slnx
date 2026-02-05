@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+  </Folder>
+  <Project Path="ProjekatMreze/Common.csproj" Id="7c804958-daec-407a-a0bf-ee8b6061fdd3" />
+  <Project Path="Server/Server.csproj" Id="2baf1cf5-4e43-4650-b1f5-7dcc9f616a4a" />
+  <Project Path="Uredjaj/Klijent.csproj" Id="ccf0e343-b361-4f08-a6c4-d51346c9dd85" />
+</Solution>

@@ -1,0 +1,23 @@
+<!--
+Pseudocode plan (detailed):
+1. Locate the Uredjaj project file (Uredjaj.csproj).
+2. Ensure the project targets .NET Framework 4.7.2 (net472) and is configured to use C# 7.3 if needed.
+3. Add a ProjectReference to the Common project so the 'Common' namespace is resolved:
+   - Add an <ItemGroup> containing <ProjectReference Include="..\Common\Common.csproj" />.
+4. Save the updated project file and reload the project in Visual Studio.
+-->
+
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Target .NET Framework 4.7.2 -->
+    <TargetFramework>net472</TargetFramework>
+
+    <!-- Set LangVersion to 7.3 if you need to enforce it -->
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Add a project reference to the Common project -->
+    <ProjectReference Include="..\Common\Common.csproj" />
+  </ItemGroup>
+</Project>
