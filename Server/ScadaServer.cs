@@ -52,6 +52,31 @@ namespace SCADAServer
             Console.ResetColor();
             Console.WriteLine();
 
+            // NOVO - Pitaj korisnika da li želi da automatski pokrene Device-e
+            Console.Write("Da li želite automatski da pokrenete Device klijente? (d/n): ");
+            string? odgovor = Console.ReadLine();
+
+            if (odgovor?.ToLower() == "d" || odgovor?.ToLower() == "da")
+            {
+                Console.Write("\nKoliko Device instanci želite? (1-20): ");
+                if (int.TryParse(Console.ReadLine(), out int broj) && broj >= 1 && broj <= 20)
+                {
+                    PokreniDeviceKlijente(broj);
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine("Nevažeći broj! Pokrećem 4 Device-a...");
+                    Console.ResetColor();
+                    PokreniDeviceKlijente(4);
+                }
+
+                Console.WriteLine("\nČekam 3 sekunde da se Device-i pokrenu...");
+                System.Threading.Thread.Sleep(3000);
+            }
+
+            Console.WriteLine();
+
             try
             {
                 InitializeServer();
@@ -61,7 +86,7 @@ namespace SCADAServer
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"\n[KRITICNA GRESKA] {ex.Message}");
+                Console.WriteLine($"\n[KRITIČNA GREŠKA] {ex.Message}");
                 Console.ResetColor();
             }
             finally
@@ -1092,6 +1117,91 @@ namespace SCADAServer
             Console.WriteLine("[CLEANUP] Sve uticnice zatvorene");
             Console.WriteLine($"[CLEANUP] Write log sacuvan ({writeLog.Count} dogadjaja)");
             Console.ResetColor();
+        }
+
+        static void PokreniDeviceKlijente(int broj)
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("\n╔═══════════════════════════════════════════════════════════════╗");
+            Console.WriteLine("║          AUTOMATSKO POKRETANJE DEVICE KLIJENATA               ║");
+            Console.WriteLine("╚═══════════════════════════════════════════════════════════════╝");
+            Console.ResetColor();
+            Console.WriteLine();
+
+            try
+            {
+                // Pronađi Device.exe
+                string currentDir = AppDomain.CurrentDomain.BaseDirectory;
+
+                // Probaj različite putanje
+                string[] moguceputanje = new string[]
+                {
+            Path.Combine(currentDir, "..", "..", "..", "..", "Client", "bin", "Debug", "net10.0", "Device.exe"),
+            Path.Combine(currentDir, "..", "..", "..", "..", "Client", "bin", "Release", "net10.0", "Device.exe"),
+            Path.Combine(currentDir, "Device.exe"), // Ako je u istom folderu
+            Path.Combine(currentDir, "..", "Device.exe"),
+                };
+
+                string? devicePath = null;
+                foreach (var putanja in moguceputanje)
+                {
+                    string fullPath = Path.GetFullPath(putanja);
+                    if (File.Exists(fullPath))
+                    {
+                        devicePath = fullPath;
+                        break;
+                    }
+                }
+
+                if (devicePath == null)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("[ERROR] Device.exe nije pronađen!");
+                    Console.WriteLine("[INFO] Pokrenite Device-e ručno.");
+                    Console.ResetColor();
+                    return;
+                }
+
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"[OK] Device.exe pronađen: {devicePath}");
+                Console.ResetColor();
+                Console.WriteLine();
+
+                // Pokreni Device instance
+                for (int i = 0; i < broj; i++)
+                {
+                    try
+                    {
+                        System.Diagnostics.Process proces = new System.Diagnostics.Process();
+                        proces.StartInfo.FileName = devicePath;
+                        proces.StartInfo.WorkingDirectory = Path.GetDirectoryName(devicePath);
+                        proces.StartInfo.UseShellExecute = true; // Otvara u novom prozoru
+                        proces.Start();
+
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"[{i + 1}/{broj}] ✓ Device #{i + 1} pokrenut");
+                        Console.ResetColor();
+
+                        System.Threading.Thread.Sleep(800); // Pauza između pokretanja
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"[{i + 1}/{broj}] ✗ Greška: {ex.Message}");
+                        Console.ResetColor();
+                    }
+                }
+
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"\n✓ Uspešno pokrenuto {broj} Device instanci!");
+                Console.ResetColor();
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"\n[ERROR] Kritična greška pri pokretanju Device-a: {ex.Message}");
+                Console.ResetColor();
+            }
         }
     }
 }

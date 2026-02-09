@@ -35,7 +35,15 @@ namespace Device
             Console.ResetColor();
             Console.WriteLine();
 
-            ConfigureDevice();
+            // Automatska konfiguracija ako je prosleđen argument
+            if (args.Length > 0 && int.TryParse(args[0], out int deviceId))
+            {
+                AutoConfigureDevice(deviceId);
+            }
+            else
+            {
+                ConfigureDevice();
+            }
 
             try
             {
@@ -46,7 +54,7 @@ namespace Device
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"\n[KRITIČNA GREŠKA] {ex.Message}");
+                Console.WriteLine($"\n[KRITICNA GRESKA] {ex.Message}");
                 Console.ResetColor();
             }
             finally
@@ -58,36 +66,110 @@ namespace Device
             Console.ReadKey();
         }
 
-        static void ConfigureDevice()
+        static void AutoConfigureDevice(int deviceId)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("═══════════════════════════════════════════════════════════════");
-            Console.WriteLine("              KONFIGURACIJA UREĐAJA");
+            Console.WriteLine("           AUTOMATSKA KONFIGURACIJA UREDJAJA");
             Console.WriteLine("═══════════════════════════════════════════════════════════════");
             Console.ResetColor();
             Console.WriteLine();
 
-            Console.Write("Unesite ID uređaja: ");
+            DeviceType type;
+            double minValue, maxValue;
+            PhysicalQuantity quantity;
+            bool isInput;
+            string typeName;
+
+            // Automatski dodeljuje tip na osnovu ID-a
+            switch (deviceId % 4)
+            {
+                case 1: // Solarni Panel
+                    type = DeviceType.SolarniPanel;
+                    minValue = 0;
+                    maxValue = 5000;
+                    quantity = PhysicalQuantity.W;
+                    isInput = true;
+                    typeName = "Solarni Panel";
+                    break;
+
+                case 2: // Vetrogenerator
+                    type = DeviceType.Vetrogenerator;
+                    minValue = 0;
+                    maxValue = 3000;
+                    quantity = PhysicalQuantity.W;
+                    isInput = true;
+                    typeName = "Vetrogenerator";
+                    break;
+
+                case 3: // Baterija
+                    type = DeviceType.Baterija;
+                    minValue = 0;
+                    maxValue = 100;
+                    quantity = PhysicalQuantity.P;
+                    isInput = false;
+                    typeName = "Baterija";
+                    break;
+
+                default: // Potrošač (case 0)
+                    type = DeviceType.Potrosac;
+                    minValue = 0;
+                    maxValue = 2000;
+                    quantity = PhysicalQuantity.W;
+                    isInput = false;
+                    typeName = "Potrosac";
+                    break;
+            }
+
+            string ipAddress = "127.0.0.1";
+            int port = 50001 + deviceId;
+
+            config = new DeviceConfiguration(deviceId, type, minValue, maxValue,
+                quantity, isInput, ipAddress, port);
+
+            currentValue = GetInitialAlarmProneValue();
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Uredjaj automatski konfigurisan!");
+            Console.ResetColor();
+            Console.WriteLine($"  |- ID: {config.DeviceID}");
+            Console.WriteLine($"  |- Tip: {typeName}");
+            Console.WriteLine($"  |- Opseg: [{config.MinValue} - {config.MaxValue}] {config.Quantity}");
+            Console.WriteLine($"  |- Smer: {(config.IsInput ? "Ulaz (Input)" : "Izlaz (Output)")}");
+            Console.WriteLine($"  '- Pocetna vrednost: {currentValue:F2} {quantity}");
+            Console.WriteLine();
+        }
+
+        static void ConfigureDevice()
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("═══════════════════════════════════════════════════════════════");
+            Console.WriteLine("              KONFIGURACIJA UREDJAJA");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════");
+            Console.ResetColor();
+            Console.WriteLine();
+
+            Console.Write("Unesite ID uredjaja: ");
             int deviceId;
             while (!int.TryParse(Console.ReadLine(), out deviceId) || deviceId < 1)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.Write("Nevažeći ID! Unesite pozitivan broj: ");
+                Console.Write("Nevazeci ID! Unesite pozitivan broj: ");
                 Console.ResetColor();
             }
 
-            Console.WriteLine("\nIzbor tipa uređaja:");
+            Console.WriteLine("\nIzbor tipa uredjaja:");
             Console.WriteLine("  1 - Solarni Panel");
             Console.WriteLine("  2 - Vetrogenerator");
             Console.WriteLine("  3 - Baterija");
-            Console.WriteLine("  4 - Potrošač");
-            Console.Write("\nVaš izbor (1-4): ");
-            
+            Console.WriteLine("  4 - Potrosac");
+            Console.Write("\nVas izbor (1-4): ");
+
             int typeChoice;
             while (!int.TryParse(Console.ReadLine(), out typeChoice) || typeChoice < 1 || typeChoice > 4)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.Write("Nevažeći izbor! Unesite broj 1-4: ");
+                Console.Write("Nevazeci izbor! Unesite broj 1-4: ");
                 Console.ResetColor();
             }
 
@@ -98,68 +180,56 @@ namespace Device
 
             switch (typeChoice)
             {
-                case 1: // Solarni Panel
-                    type = DeviceType.SolarniPanel;
-                    minValue = 0;
-                    maxValue = 5000; // 5kW max
-                    quantity = PhysicalQuantity.W;
-                    isInput = true;
-                    break;
-
-                case 2: // Vetrogenerator
-                    type = DeviceType.Vetrogenerator;
-                    minValue = 0;
-                    maxValue = 3000; // 3kW max
-                    quantity = PhysicalQuantity.W;
-                    isInput = true;
-                    break;
-
-                case 3: // Baterija
-                    type = DeviceType.Baterija;
-                    minValue = 0;
-                    maxValue = 100; // 0-100%
-                    quantity = PhysicalQuantity.P;
-                    isInput = false;
-                    break;
-
-                case 4: // Potrošač
-                    type = DeviceType.Potrosac;
-                    minValue = 0;
-                    maxValue = 2000; // 2kW max
-                    quantity = PhysicalQuantity.W;
-                    isInput = false;
-                    break;
-
-                default:
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine("Nevažeći izbor! Koristi se Solarni Panel kao default.");
-                    Console.ResetColor();
+                case 1:
                     type = DeviceType.SolarniPanel;
                     minValue = 0;
                     maxValue = 5000;
                     quantity = PhysicalQuantity.W;
                     isInput = true;
                     break;
+
+                case 2:
+                    type = DeviceType.Vetrogenerator;
+                    minValue = 0;
+                    maxValue = 3000;
+                    quantity = PhysicalQuantity.W;
+                    isInput = true;
+                    break;
+
+                case 3:
+                    type = DeviceType.Baterija;
+                    minValue = 0;
+                    maxValue = 100;
+                    quantity = PhysicalQuantity.P;
+                    isInput = false;
+                    break;
+
+                case 4:
+                    type = DeviceType.Potrosac;
+                    minValue = 0;
+                    maxValue = 2000;
+                    quantity = PhysicalQuantity.W;
+                    isInput = false;
+                    break;
             }
 
             string ipAddress = "127.0.0.1";
             int port = 50001 + deviceId;
 
-            config = new DeviceConfiguration(deviceId, type, minValue, maxValue, 
-                                             quantity, isInput, ipAddress, port);
+            config = new DeviceConfiguration(deviceId, type, minValue, maxValue,
+                quantity, isInput, ipAddress, port);
 
-            // Inicijalna vrednost - postavljena bliže alarmnom stanju
             currentValue = GetInitialAlarmProneValue();
 
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("✓ Uređaj uspešno konfigurisan!");
+            Console.WriteLine("Uredjaj uspesno konfigurisan!");
             Console.ResetColor();
-            Console.WriteLine($"  ├─ ID: {config.DeviceID}");
-            Console.WriteLine($"  ├─ Tip: {config.Type}");
-            Console.WriteLine($"  ├─ Opseg: [{config.MinValue} - {config.MaxValue}] {config.Quantity}");
-            Console.WriteLine($"  ├─ Smer: {(config.IsInput ? "Ulaz" : "Izlaz")}");
-            Console.WriteLine($"  └─ Početna vrednost: {currentValue:F2} {quantity}");
+            Console.WriteLine($"  |- ID: {config.DeviceID}");
+            Console.WriteLine($"  |- Tip: {config.Type}");
+            Console.WriteLine($"  |- Opseg: [{config.MinValue} - {config.MaxValue}] {config.Quantity}");
+            Console.WriteLine($"  |- Smer: {(config.IsInput ? "Ulaz" : "Izlaz")}");
+            Console.WriteLine($"  '- Pocetna vrednost: {currentValue:F2} {quantity}");
             Console.WriteLine();
         }
 
@@ -167,24 +237,18 @@ namespace Device
         {
             if (config == null) return 0;
 
-            // Postavi početne vrednosti bliže alarmnim granicama
             switch (config.Type)
             {
                 case DeviceType.SolarniPanel:
-                    // Počinje nisko - između 50-200W (alarm je <300W)
-                    return random.Next(50, 200
-                        );
+                    return random.Next(50, 200);
 
                 case DeviceType.Vetrogenerator:
-                    // Počinje nisko - između 50-200W
                     return random.Next(50, 200);
 
                 case DeviceType.Baterija:
-                    // Počinje sa 85% - brzo će dostići 90%
                     return 85.0;
 
                 case DeviceType.Potrosac:
-                    // Počinje na 75% kapaciteta - brzo će dostići 80%
                     return config.MaxValue * 0.75;
 
                 default:
@@ -212,22 +276,22 @@ namespace Device
                 Console.WriteLine($"[UDP] Slanje inicijalizacije serveru {serverEP}...");
                 udpSocket.SendTo(configData, serverEP);
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"[UDP] ✓ Poslato {configData.Length} bajtova");
+                Console.WriteLine($"[UDP] Poslato {configData.Length} bajtova");
                 Console.ResetColor();
 
                 udpSocket.ReceiveTimeout = 5000;
                 byte[] receiveBuffer = new byte[1024];
                 EndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
-                
-                Console.WriteLine("[UDP] Čekam potvrdu od servera...");
+
+                Console.WriteLine("[UDP] Cekam potvrdu od servera...");
                 int bytesReceived = udpSocket.ReceiveFrom(receiveBuffer, ref remoteEP);
                 string confirmation = Encoding.UTF8.GetString(receiveBuffer, 0, bytesReceived);
 
                 if (confirmation.StartsWith("CONFIG_OK"))
                 {
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"[UDP] ✓ Potvrda primljena: {confirmation}");
-                    Console.WriteLine("[UDP] ✓ Inicijalizacija uspešna!");
+                    Console.WriteLine($"[UDP] Potvrda primljena: {confirmation}");
+                    Console.WriteLine("[UDP] Inicijalizacija uspesna!");
                     Console.ResetColor();
                 }
                 else
@@ -266,10 +330,10 @@ namespace Device
                 isConnected = true;
 
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"[TCP] ✓ Konekcija uspostavljena");
+                Console.WriteLine($"[TCP] Konekcija uspostavljena");
                 Console.ResetColor();
-                Console.WriteLine($"[TCP]   ├─ Server: {serverEP}");
-                Console.WriteLine($"[TCP]   └─ Lokalna adresa: {tcpSocket.LocalEndPoint}");
+                Console.WriteLine($"[TCP]   |- Server: {serverEP}");
+                Console.WriteLine($"[TCP]   '- Lokalna adresa: {tcpSocket.LocalEndPoint}");
                 Console.WriteLine();
             }
             catch (Exception ex)
@@ -287,10 +351,10 @@ namespace Device
 
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("╔═══════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║          UREĐAJ U RADU - POLLING MODEL                        ║");
+            Console.WriteLine("║          UREDJAJ U RADU - POLLING MODEL                       ║");
             Console.WriteLine("╚═══════════════════════════════════════════════════════════════╝");
             Console.ResetColor();
-            Console.WriteLine("Komande: ESC - Zaustavi uređaj\n");
+            Console.WriteLine("Komande: ESC - Zaustavi uredjaj\n");
 
             byte[] receiveBuffer = new byte[8192];
             int pollAttempts = 0;
@@ -329,13 +393,13 @@ namespace Device
                     else
                     {
                         pollAttempts++;
-                        if (pollAttempts % 5 == 0) // Prikazuj svakih 5 pokušaja
+                        if (pollAttempts % 5 == 0)
                         {
                             Console.ForegroundColor = ConsoleColor.Gray;
-                            Console.WriteLine($"[POLL] Čekam zahtev... (pokušaj {pollAttempts}/{MAX_POLL_ATTEMPTS})");
+                            Console.WriteLine($"[POLL] Cekam zahtev... (pokusaj {pollAttempts}/{MAX_POLL_ATTEMPTS})");
                             Console.ResetColor();
                         }
-                        
+
                         SimulateValueChange();
                     }
 
@@ -345,16 +409,15 @@ namespace Device
                         if (key.Key == ConsoleKey.Escape)
                         {
                             Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.WriteLine("\n[DEVICE] Korisnik zatvara uređaj...");
+                            Console.WriteLine("\n[DEVICE] Korisnik zatvara uredjaj...");
                             Console.ResetColor();
                             isConnected = false;
                             break;
                         }
                     }
                 }
-                catch (SocketException ex)  
+                catch (SocketException ex) when (ex.SocketErrorCode == SocketError.WouldBlock)
                 {
-                    if((ex.SocketErrorCode == SocketError.WouldBlock))
                     Thread.Sleep(100);
                 }
                 catch (Exception ex)
@@ -370,7 +433,7 @@ namespace Device
             if (pollAttempts >= MAX_POLL_ATTEMPTS)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"\n[TIMEOUT] Prošlo {MAX_POLL_ATTEMPTS} pokušaja bez komunikacije. Zatvaram uređaj.");
+                Console.WriteLine($"\n[TIMEOUT] Proslo {MAX_POLL_ATTEMPTS} pokusaja bez komunikacije. Zatvaram uredjaj.");
                 Console.ResetColor();
             }
         }
@@ -387,20 +450,20 @@ namespace Device
                 {
                     Console.WriteLine($"[READ] Tip: {request.Type}");
                     Console.WriteLine($"[READ] Trenutna vrednost: {currentValue:F2} {config.Quantity}");
-                    
+
                     bool isAlarm = CheckAlarmCondition();
-                    
+
                     if (isAlarm)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"[ALARM] !  ALARMNO STANJE DETEKTOVANO!");
+                        Console.WriteLine($"[ALARM] ALARMNO STANJE DETEKTOVANO!");
                         Console.WriteLine($"[ALARM] Poruka: {GetAlarmMessage()}");
                         Console.ResetColor();
                     }
                     else
                     {
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine($"[STATUS] ✓ Normalno stanje");
+                        Console.WriteLine($"[STATUS] Normalno stanje");
                         Console.ResetColor();
                     }
 
@@ -417,14 +480,14 @@ namespace Device
                     if (config.IsInput)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("[WRITE ERROR] Uređaj je ulazni - ne podržava pisanje!");
+                        Console.WriteLine("[WRITE ERROR] Uredjaj je ulazni - ne podrzava pisanje!");
                         Console.ResetColor();
-                        
+
                         response = new DeviceResponse(
                             config.DeviceID,
                             ResponseStatus.Error,
                             currentValue,
-                            "Uređaj ne podržava Write operaciju"
+                            "Uredjaj ne podrzava Write operaciju"
                         );
                     }
                     else
@@ -432,14 +495,14 @@ namespace Device
                         if (request.WriteValue.HasValue)
                         {
                             double newValue = request.WriteValue.Value;
-                            
+
                             if (newValue >= config.MinValue && newValue <= config.MaxValue)
                             {
                                 currentValue = newValue;
                                 Console.ForegroundColor = ConsoleColor.Green;
-                                Console.WriteLine($"[WRITE] ✓ Nova vrednost postavljena: {currentValue:F2} {config.Quantity}");
+                                Console.WriteLine($"[WRITE] Nova vrednost postavljena: {currentValue:F2} {config.Quantity}");
                                 Console.ResetColor();
-                                
+
                                 response = new DeviceResponse(
                                     config.DeviceID,
                                     ResponseStatus.Success,
@@ -452,7 +515,7 @@ namespace Device
                                 Console.ForegroundColor = ConsoleColor.Red;
                                 Console.WriteLine($"[WRITE ERROR] Vrednost {newValue} van opsega [{config.MinValue}-{config.MaxValue}]!");
                                 Console.ResetColor();
-                                
+
                                 response = new DeviceResponse(
                                     config.DeviceID,
                                     ResponseStatus.Error,
@@ -466,12 +529,12 @@ namespace Device
                             Console.ForegroundColor = ConsoleColor.Red;
                             Console.WriteLine($"[WRITE ERROR] Nedostaje vrednost za upis!");
                             Console.ResetColor();
-                            
+
                             response = new DeviceResponse(
                                 config.DeviceID,
                                 ResponseStatus.Error,
                                 currentValue,
-                                "Write vrednost nije prosleđena"
+                                "Write vrednost nije prosledjena"
                             );
                         }
                     }
@@ -482,16 +545,16 @@ namespace Device
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"[ERROR] Greška pri obradi zahteva: {ex.Message}");
+                Console.WriteLine($"[ERROR] Greska pri obradi zahteva: {ex.Message}");
                 Console.ResetColor();
-                
+
                 response = new DeviceResponse(
                     config.DeviceID,
                     ResponseStatus.Error,
                     currentValue,
                     ex.Message
                 );
-                
+
                 SendResponse(response);
             }
         }
@@ -504,11 +567,11 @@ namespace Device
             {
                 byte[] responseData = SerializationHelper.Serialize(response);
                 tcpSocket.Send(responseData);
-                
+
                 ConsoleColor statusColor = response.Status == ResponseStatus.Success ? ConsoleColor.Green :
                                           response.Status == ResponseStatus.AlarmActive ? ConsoleColor.Red :
                                           ConsoleColor.Yellow;
-                
+
                 Console.ForegroundColor = statusColor;
                 Console.WriteLine($"[RESPONSE] Odgovor poslat serveru (Status: {response.Status})");
                 Console.ResetColor();
@@ -516,7 +579,7 @@ namespace Device
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"[ERROR] Greška pri slanju odgovora: {ex.Message}");
+                Console.WriteLine($"[ERROR] Greska pri slanju odgovora: {ex.Message}");
                 Console.ResetColor();
             }
         }
@@ -530,29 +593,24 @@ namespace Device
             switch (config.Type)
             {
                 case DeviceType.SolarniPanel:
-                    // POVEĆANE VARIJACIJE - brže dostizanje alarma
                     change = random.Next(-400, 500);
                     break;
 
                 case DeviceType.Vetrogenerator:
-                    // POVEĆANE VARIJACIJE
                     change = random.Next(-300, 400);
                     break;
 
                 case DeviceType.Baterija:
-                    // BRŽE PUNJENJE/PRAŽNJENJE
                     change = random.Next(-3, 4);
                     break;
 
                 case DeviceType.Potrosac:
-                    // VEĆE OSCILACIJE
                     change = random.Next(-100, 150);
                     break;
             }
 
             currentValue += change;
 
-            // Ograniči vrednost
             if (currentValue < config.MinValue) currentValue = config.MinValue;
             if (currentValue > config.MaxValue) currentValue = config.MaxValue;
         }
@@ -561,23 +619,18 @@ namespace Device
         {
             if (config == null) return false;
 
-            // POJAČANI ALARMI - češće aktiviranje
             switch (config.Type)
             {
                 case DeviceType.SolarniPanel:
-                    // ALARM ako je ispod 300W
                     return currentValue < 300;
 
                 case DeviceType.Vetrogenerator:
-                    // ALARM ako je ispod 300W
                     return currentValue < 300;
 
                 case DeviceType.Baterija:
-                    // ALARM na 90%+ ili ispod 10%
                     return currentValue >= config.MaxValue * 0.90 || currentValue <= config.MinValue + 10;
 
                 case DeviceType.Potrosac:
-                    // ALARM na 80%+
                     return currentValue >= config.MaxValue * 0.80;
 
                 default:
@@ -604,7 +657,7 @@ namespace Device
                         return $"Baterija skoro prazna ({currentValue:F1}%)! Hitno punjenje!";
 
                 case DeviceType.Potrosac:
-                    return $"Preopterećenje ({currentValue:F0}W od {config.MaxValue}W)! Redukovati potrošnju!";
+                    return $"Preopterecenje ({currentValue:F0}W od {config.MaxValue}W)! Redukovati potrosnju!";
 
                 default:
                     return "Alarm aktivan!";
@@ -615,7 +668,7 @@ namespace Device
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("\n╔═══════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║                  ZATVARANJE UREĐAJA                           ║");
+            Console.WriteLine("║                  ZATVARANJE UREDJAJA                          ║");
             Console.WriteLine("╚═══════════════════════════════════════════════════════════════╝");
             Console.ResetColor();
 
@@ -626,7 +679,7 @@ namespace Device
                     tcpSocket.Shutdown(SocketShutdown.Both);
                     tcpSocket.Close();
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("[TCP] ✓ TCP konekcija zatvorena");
+                    Console.WriteLine("[TCP] TCP konekcija zatvorena");
                     Console.ResetColor();
                 }
             }
@@ -636,13 +689,13 @@ namespace Device
             {
                 udpSocket?.Close();
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("[UDP] ✓ UDP utičnica zatvorena");
+                Console.WriteLine("[UDP] UDP uticnica zatvorena");
                 Console.ResetColor();
             }
             catch { }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n✓ Uređaj uspešno zaustavljen");
+            Console.WriteLine("\nUredjaj uspesno zaustavljen");
             Console.ResetColor();
         }
     }
